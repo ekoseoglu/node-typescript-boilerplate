@@ -1,15 +1,23 @@
 import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import logger from 'morgan';
-import { join, dirname } from 'path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'url';
 import articlesRoute from './routes/articlesRoute.js';
+import { createServer } from 'node:http';
+import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const port = 3000;
+
+// socket.io
+const server = createServer(app);
+const io = new Server(server);
+// socket.io
+
 
 app.use(logger('dev'));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -48,6 +56,21 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile(join(__dirname, 'views', 'index.html'));
+});
+
+io.on('connection', (socket) => {
+  console.log('a user connected');
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+
+  socket.on('chat message', (msg) => {
+    io.emit('chat message', msg);
+  });
+});
+
 const router = express.Router();
 
 // routes
@@ -59,13 +82,13 @@ app.use(router);
 app.set('port', port);
 
 // listen on specified port
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send('404 Not Found');
-});
+//app.use((req: Request, res: Response, next: NextFunction) => {
+//  res.status(404).send('404 Not Found');
+//});
 
 
 export default app;
